@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAR Belajar Emosi - Senang</title>
+    <!-- Library A-Frame dan AR.js -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; }
+        
+        /* Overlay Instruksi */
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 30px;
+            text-align: center;
+            pointer-events: none;
+            font-size: 16px;
+            width: 80%;
+            max-width: 400px;
+            border: 2px solid #4CAF50;
+        }
+
+        /* Tombol Start */
+        #start-btn {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            padding: 20px 40px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="instructions">Klik tombol di bawah untuk memulai kamera</div>
+    <button id="start-btn">Mulai Belajar</button>
+
+    <a-scene 
+        embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false;" 
+        renderer="antialias: true; alpha: true; logarithmicDepthBuffer: true;"
+        vr-mode-ui="enabled: false">
+        
+        <a-assets>
+            <!-- Menggunakan URL audio alternatif yang seringkali lebih stabil untuk testing -->
+            <audio id="suaraTawa" src="https://actions.google.com/sounds/v1/human_voices/laugh_softly.ogg" preload="auto" crossorigin="anonymous"></audio>
+            
+            <!-- Asset model 3D Duck sebagai placeholder wajah senang -->
+            <a-asset-item id="modelSenang" src="https://raw.githack.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb"></a-asset-item>
+        </a-assets>
+
+        <!-- Marker Hiro -->
+        <a-marker preset="hiro" id="marker-hiro">
+            
+            <!-- Entitas Model 3D -->
+            <a-entity 
+                id="face-entity"
+                gltf-model="#modelSenang" 
+                scale="0.8 0.8 0.8" 
+                position="0 0.5 0"
+                animation="property: position; dir: alternate; dur: 1000; easing: easeInSine; loop: true; to: 0 0.8 0">
+            </a-entity>
+
+            <!-- Fallback visual jika model 3D gagal: Bola Kuning Tersenyum -->
+            <a-sphere id="fallback-visual" position="0 0.5 0" radius="0.5" color="#FFEB3B" visible="false">
+                <!-- Mata -->
+                <a-sphere position="-0.2 0.2 0.4" radius="0.05" color="black"></a-sphere>
+                <a-sphere position="0.2 0.2 0.4" radius="0.05" color="black"></a-sphere>
+                <!-- Senyum -->
+                <a-ring position="0 -0.1 0.4" radius-inner="0.1" radius-outer="0.15" theta-length="180" rotation="0 0 180" color="black"></a-ring>
+            </a-sphere>
+
+        </a-marker>
+
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        const marker = document.querySelector('#marker-hiro');
+        const audio = document.querySelector('#suaraTawa');
+        const startBtn = document.querySelector('#start-btn');
+        const infoBox = document.getElementById('instructions');
+        const faceEntity = document.querySelector('#face-entity');
+        const fallbackVisual = document.querySelector('#fallback-visual');
+        
+        let isUserInteracted = false;
+
+        // Fungsi untuk memulai Audio Context setelah interaksi pengguna
+        startBtn.addEventListener('click', function() {
+            isUserInteracted = true;
+            
+            // Mencoba memutar audio sejenak untuk membuka blokir browser
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                startBtn.style.display = 'none';
+                infoBox.innerText = "Kamera Aktif! Cari Marker HIRO";
+                console.log("Audio siap digunakan");
+            }).catch(err => {
+                console.log("Audio belum siap, tapi tetap lanjut:", err);
+                startBtn.style.display = 'none';
+                infoBox.innerText = "Kamera Aktif! Cari Marker HIRO";
+            });
+        });
+
+        // Event saat marker terdeteksi
+        marker.addEventListener('markerFound', () => {
+            console.log('Marker ditemukan');
+            infoBox.innerText = "Anak sedang SENANG!";
+            
+            if (isUserInteracted) {
+                audio.loop = true;
+                // Menggunakan play() dengan penanganan error
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error("Gagal memutar audio otomatis:", error);
+                    });
+                }
+            }
+        });
+
+        // Event saat marker hilang
+        marker.addEventListener('markerLost', () => {
+            console.log('Marker hilang');
+            infoBox.innerText = "Arahkan ke Marker HIRO";
+            audio.pause();
+            audio.currentTime = 0;
+        });
+
+        // Menangani jika model 3D gagal dimuat
+        faceEntity.addEventListener('model-error', () => {
+            console.warn("Model GLTF gagal dimuat. Menampilkan fallback.");
+            faceEntity.setAttribute('visible', 'false');
+            fallbackVisual.setAttribute('visible', 'true');
+        });
+    </script>
+</body>
+</html>
